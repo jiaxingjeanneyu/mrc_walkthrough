@@ -1,0 +1,98 @@
+---
+title: "MRC examples"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+##Setup
+
+```{r}
+# label: setup
+# message: false
+# warning: false
+library("tidyverse")
+library("ds4ling")
+library("untidydata")
+library("broom")
+library("emmeans")
+```
+
+##Tidy
+
+```{r}
+
+ld <- language_diversity %>%
+  mutate_if(is.character, as.factor) %>%
+```
+
+```{r}
+#ld %>%
+#  ggplot()+
+#  aes(x=Continent, y=Value)+
+#  geom_point()
+
+
+  pivot_wider( names_from = Measurement, 
+               values_from = Value
+  ) %>%
+  mutate(lang_log = log (Langs),
+         area_log = log (Area),
+         pop_log = log (Population))
+  
+View(ld)
+summary(ld)
+dim(ld)
+str(ld)
+glimpse(ld)
+
+
+ld %>%
+  ggplot() +
+  aes(x= area_log, y=lang_log) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+
+```
+
+##Analyses
+
+```{r}
+
+mean(ld$lang_log)
+
+mod_0 <- lm(lang_log ~ 1, data = ld)# intercept-only model: when x is zero
+mod_1 <- lm(lang_log ~ 1 + pop_log,                               data = ld) # one unit change of pop_log is associated                                                               with an increase of lang_log by 0.36709
+mod_2 <- lm(lang_log ~ 1 + pop_log + area_log, data=ld)# when pop_log and area_log are zero, intercept
+# one unit change of area_log is associated with an increase of lang_log by 0.1557, while holding pop_log constant at zero.
+mod_3 <- lm(lang_log ~ 1 + pop_log * area_log,                    data = ld) # the same as below
+# mod_3 <- lm(lang_log ~ 1 + pop_log + area_log + pop_log:area_log, data = ld)
+summary(mod_0)
+summary(mod_1)
+summary(mod_2)
+summary(mod_3)
+```
+
+##Tables and plots Hello, please appreciate @tbl-model
+
+```{r,tbl-model}
+
+tidy(mod_3) %>%
+  knitr::kable(format = "pandoc")
+
+emmeans(
+  object = mod_1,
+  specs = ~ pop_log,
+  at = list (pop_log = seq(0, 20, by =1 ))
+
+)
+emmeans (
+  object =mod_3,
+  specs = ~ pop_log * area_log, 
+  at = list (pop_log = c(0, 10, 20),
+             area_log = c(0, 10, 20))
+)
+```
